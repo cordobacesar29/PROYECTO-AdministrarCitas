@@ -18,6 +18,11 @@ class Citas {
     agregarCita(cita) {
         this.citas =[...this.citas, cita];
     }
+
+    deleteQuote(id) {
+        this.citas = this.citas.filter(cita => cita.id !== id);
+    }
+
 }
 
 class UI {
@@ -85,6 +90,12 @@ class UI {
                 <span class="font-weight-bolder">Síntomas: </span> ${sintomas}
             `;
 
+            //borrar citas
+            const btnDelete = document.createElement('button');
+            btnDelete.classList.add('btn', 'btn-danger', 'mr-2');
+            btnDelete.innerHTML = 'Eliminar';
+
+            btnDelete.onclick = () => deleteQuote(id);
 
             //agregar los parrafos al divCitas
             divCita.appendChild(mascotaParrafo);
@@ -93,6 +104,7 @@ class UI {
             divCita.appendChild(fechaParrafo);
             divCita.appendChild(horaParrafo);
             divCita.appendChild(sintomasParrafo);
+            divCita.appemdChild(btnDelete);
 
             //agregar citas al HTML
             quotesContainer.appendChild(divCita);
@@ -179,4 +191,16 @@ function reiniciarObjeto() {
     quotesObj.fecha = '';
     quotesObj.hora = '';
     quotesObj.sintomas = '';
+}
+
+function deleteQuote(id) {
+    
+    //eliminar la cita
+    administrarCitas.deleteQuote(id);
+
+    // mostrar msj
+    ui.imprimirAlerta('la cita se eliminó correctamente');
+
+    // refrescar las citas
+    ui.imprimirCitas(administrarCitas);
 }
