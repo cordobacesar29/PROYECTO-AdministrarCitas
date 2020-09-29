@@ -1,4 +1,5 @@
 // variables form fields
+let DB;
 const petInput = document.querySelector('#mascota');
 const ownerInput = document.querySelector('#propietario');
 const phoneInput = document.querySelector('#telefono');
@@ -54,12 +55,25 @@ class UI {
         }, 5000 );
     }
 
-    imprimirCitas({citas}) {
+    imprimirCitas() {
 
         this.limpiarHTML();
-       
-        citas.forEach( cita => {
-            const { mascota, propietario, telefono, fecha, hora, sintomas, id } = cita;
+
+       //leer el contenido de la base de datos
+       const objectStore = DB.transaction('citas').objectStore('citas');
+
+       const total = objectStore.count();
+       total.onsuccess = function() {
+           console.log(total.result);
+       }
+
+       objectStore.openCursor().onsuccess = function(e) {
+           
+        const cursor = e.target.result;
+        
+        if(cursor) {
+        
+            const { mascota, propietario, telefono, fecha, hora, sintomas, id } = cursor.value;
 
             const divCita = document.createElement('div');
             divCita.classList.add('cita','p-3');
@@ -119,7 +133,13 @@ class UI {
 
             //agregar citas al HTML
             quotesContainer.appendChild(divCita);
-        })
+
+            //ve al siguiente elemento
+            cursor.continue();
+        
+        }
+       }
+       
     }
 
     limpiarHTML() {
@@ -145,7 +165,13 @@ const quotesObj = {
 
 //event listeners
 
-eventListeners();
+window.onload = () => {
+    eventListeners();
+
+    createDB();
+}
+
+
 
 
 //funciones
@@ -197,8 +223,20 @@ function nuevaCita(e) {
         //creamos una nueva cita
         administrarCitas.agregarCita({...quotesObj});
 
-        //imprimir mensaje de agregado correctamente
-        ui.imprimirAlerta('Se agregó correctamente');
+        //insertar registro de indexedDB
+        const transaction = DB.transaction(['citas'], 'readwrite');
+        //habilitar el objectStore
+        const objectStore = transaction.objectStore('citas');
+        //insertar en la DB
+        objectStore.add(quotesObj);
+
+        transaction.oncomplete = function() {
+            console.log('agrega cita');
+            //imprimir mensaje de agregado correctamente
+            ui.imprimirAlerta('Se agregó correctamente');
+        }
+
+        
     }
 
     
@@ -210,7 +248,7 @@ function nuevaCita(e) {
     form.reset();
 
     //mostrar el HTML de las citas
-    ui.imprimirCitas(administrarCitas);
+    ui.imprimirCitas();
 }
 
 function reiniciarObjeto() {
@@ -231,7 +269,7 @@ function deleteQuote(id) {
     ui.imprimirAlerta('la cita se eliminó correctamente');
 
     // refrescar las citas
-    ui.imprimirCitas(administrarCitas);
+    ui.imprimirCitas();
 }
 
 //carga los datos y el modo edicion
@@ -259,4 +297,42 @@ function uploadEdit(cita) {
     form.querySelector('button[type="submit"]').textContent = 'Guardar Cambios';
 
     editando = true;
+}
+
+function createDB() {
+    //crear la base de datos en version 1.0
+    const crearDB = window.indexedDB.open('citas', 1);
+
+    //si hay un error
+    crearDB.onerror = function() {
+        console.log('hubo un error');
+    }
+
+    //si todo sale biuen
+
+    crearDB.onsuccess = function() {
+        console.log('DB creada');
+        DB = crearDB.result;
+
+        //mostrar citas al cargar
+        ui.imprimirCitas();
+    }
+
+    //definir el schema
+    crearDB.onupgradeneeded = function (e) {
+        const db = e.target.result;
+
+        const objectStore = db.createObjectStore('citas', {
+            keyPath: 'id',
+            autoIncrement: true
+        });
+        objectStore.createIndex('mascota', 'mascota', {unique: false} );
+        objectStore.createIndex('propietario', 'propietario', {unique: false} );
+        objectStore.createIndex('telefono', 'telefono', {unique: false} );
+        objectStore.createIndex('fecha', 'fecha', {unique: false} );
+        objectStore.createIndex('hora', 'hora', {unique: false} );
+        objectStore.createIndex('sintomas', 'sintomas', {unique: false} );
+        objectStore.createIndex('id', 'id', {unique: true} );
+        console.log('database creada y lista');
+    }
 }
