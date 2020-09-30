@@ -116,9 +116,12 @@ class UI {
             btnDelete.onclick = () => deleteQuote(id);
 
             //añade un boton para editar
+            
             const btnEdit = document.createElement('button');
+            const cita = cursor.value;
             btnEdit.classList.add('btn', 'btn-info');
             btnEdit.innerHTML = ' Edit <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>';
+            
             btnEdit.onclick = () => uploadEdit(cita);
 
             //agregar los parrafos al divCitas
@@ -206,16 +209,32 @@ function nuevaCita(e) {
     }
 
     if(editando) {
-        ui.imprimirAlerta('Editado correctamente');
+       
 
         //pasar el objeto de la cita a edición
         administrarCitas.modifyQuote({...quotesObj});
+        //Edita en IndexDB
+        const transaction = DB.transaction(['citas'], 'readwrite');
+        const objectStore = transaction.objectStore('citas');
 
-        //regresar el texto del boton a su estado original
-        form.querySelector('button[type="submit"]').textContent = 'Crear cita';
+        objectStore.put(quotesObj);
+
+        transaction.oncomplete = () => {
+            
+            ui.imprimirAlerta('Editado correctamente');
+
+            //regresar el texto del boton a su estado original
+            form.querySelector('button[type="submit"]').textContent = 'Crear cita';
+            
+            //quita modo edición
+            editando= false;
+        }
+
+        transaction.onerror = () => {
+
+        }
+
         
-        //quita modo edición
-        editando= false;
     } else {
         //generar un id único
         quotesObj.id = Date.now();
@@ -262,14 +281,22 @@ function reiniciarObjeto() {
 
 function deleteQuote(id) {
     
-    //eliminar la cita
-    administrarCitas.deleteQuote(id);
+    const transaction = DB.transaction(['citas'], 'readwrite');
+    const objectStore = transaction.objectStore('citas');
 
-    // mostrar msj
-    ui.imprimirAlerta('la cita se eliminó correctamente');
+    objectStore.delete(id);
 
-    // refrescar las citas
-    ui.imprimirCitas();
+    transaction.oncomplete = () => {
+        
+        // refrescar las citas            
+        ui.imprimirCitas();
+    }
+
+    transaction.onerror = () => {
+        console.log('hubo un error');
+    }
+
+    
 }
 
 //carga los datos y el modo edicion
